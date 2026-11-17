@@ -27,3 +27,4 @@ Pipfile.lock
 
 .venv
 reports/
+channels-coverage/

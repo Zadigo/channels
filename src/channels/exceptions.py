@@ -4,23 +4,17 @@ class RequestAborted(Exception):
     reading the body.
     """
 
-    pass
-
 
 class RequestTimeout(RequestAborted):
     """
     Aborted specifically due to timeout.
     """
 
-    pass
-
 
 class InvalidChannelLayerError(ValueError):
     """
     Raised when a channel layer is configured incorrectly.
     """
-
-    pass
 
 
 class AcceptConnection(Exception):
@@ -29,8 +23,6 @@ class AcceptConnection(Exception):
     to accept the connection.
     """
 
-    pass
-
 
 class DenyConnection(Exception):
     """
@@ -38,15 +30,11 @@ class DenyConnection(Exception):
     to deny the connection.
     """
 
-    pass
-
 
 class ChannelFull(Exception):
     """
     Raised when a channel cannot be sent to as it is over capacity.
     """
-
-    pass
 
 
 class MessageTooLarge(Exception):
@@ -54,12 +42,8 @@ class MessageTooLarge(Exception):
     Raised when a message cannot be sent as it's too big.
     """
 
-    pass
-
 
 class StopConsumer(Exception):
     """
     Raised when a consumer wants to stop and close down its application instance.
     """
-
-    pass

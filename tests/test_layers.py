@@ -161,9 +161,8 @@ def test_deprecated_valid_channel_name():
         assert layer.valid_channel_name("valid-channel")
 
     # Should raise TypeError for invalid names
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(TypeError):
-            layer.valid_channel_name("¯\\_(ツ)_/¯")
+    with pytest.warns(DeprecationWarning), pytest.raises(TypeError):
+        layer.valid_channel_name("¯\\_(ツ)_/¯")
 
 
 def test_deprecated_valid_group_name():
@@ -178,6 +177,5 @@ def test_deprecated_valid_group_name():
         assert layer.valid_group_name("valid-group")
 
     # Should raise TypeError for invalid names
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(TypeError):
-            layer.valid_group_name("¯\\_(ツ)_/¯")
+    with pytest.warns(DeprecationWarning), pytest.raises(TypeError):
+        layer.valid_group_name("¯\\_(ツ)_/¯")

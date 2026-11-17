@@ -25,7 +25,7 @@ class ChannelLayerManager:
     """
 
     def __init__(self):
-        self.backends = {}
+        self.backends: dict[str, TypeChannelLayer] = {}
         setting_changed.connect(self._reset_backends)
 
     def _reset_backends(self, setting, **kwargs):
@@ -40,14 +40,14 @@ class ChannelLayerManager:
         # Lazy load settings so we can be imported
         return getattr(settings, "CHANNEL_LAYERS", {})
 
-    def make_backend(self, name):
+    def make_backend(self, name: str):
         """
         Instantiate channel layer.
         """
         config = self.configs[name].get("CONFIG", {})
         return self._make_backend(name, config)
 
-    def make_test_backend(self, name):
+    def make_test_backend(self, name: str):
         """
         Instantiate channel layer using its test config.
         """
@@ -57,7 +57,7 @@ class ChannelLayerManager:
             raise InvalidChannelLayerError(f"No TEST_CONFIG specified for {name}")
         return self._make_backend(name, config)
 
-    def _make_backend(self, name, config):
+    def _make_backend(self, name: str, config):
         # Check for old format config
         if "ROUTING" in self.configs[name]:
             raise InvalidChannelLayerError(
@@ -81,15 +81,15 @@ class ChannelLayerManager:
         # Initialise and pass config
         return backend_class(**config)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str):
         if key not in self.backends:
             self.backends[key] = self.make_backend(key)
         return self.backends[key]
 
-    def __contains__(self, key):
+    def __contains__(self, key: str):
         return key in self.configs
 
-    def set(self, key, layer):
+    def set(self, key: str, layer: TypeChannelLayer):
         """
         Sets an alias to point to a new ChannelLayerWrapper instance, and
         returns the old one that it replaced. Useful for swapping out the
@@ -112,13 +112,13 @@ class BaseChannelLayer:
         self,
         expiry: int = 60,
         capacity: int = 100,
-        channel_capacity: dict | None = None,
+        channel_capacity: dict[str, re.Pattern] | None = None,
     ):
         self.expiry = expiry
         self.capacity = capacity
         self.channel_capacity = channel_capacity or {}
 
-    def compile_capacities(self, channel_capacity: dict):
+    def compile_capacities(self, channel_capacity: dict[str, re.Pattern]):
         """
         Takes an input channel_capacity dict and returns the compiled list
         of regexes that get_capacity will look for as self.channel_capacity
@@ -133,7 +133,7 @@ class BaseChannelLayer:
                 result.append((re.compile(fnmatch.translate(pattern)), value))
         return result
 
-    def get_capacity(self, channel):
+    def get_capacity(self, channel: str):
         """
         Gets the correct capacity for the given channel; either the default,
         or a matching result from channel_capacity. Returns the first matching
@@ -145,7 +145,7 @@ class BaseChannelLayer:
                 return capacity
         return self.capacity
 
-    def match_type_and_length(self, name):
+    def match_type_and_length(self, name: str):
         return bool(isinstance(name, str) and len(name) < self.MAX_NAME_LENGTH)
 
     # Name validation functions
@@ -158,7 +158,7 @@ class BaseChannelLayer:
         + "containing only ASCII alphanumerics, hyphens, underscores, or periods."
     )
 
-    def require_valid_channel_name(self, name, receive: bool = False):
+    def require_valid_channel_name(self, name: str, receive: bool = False):
         if not self.match_type_and_length(name):
             raise TypeError(self.invalid_name_error.format("Channel"))
         if not bool(self.channel_name_regex.match(name)):
@@ -167,14 +167,14 @@ class BaseChannelLayer:
             raise TypeError("Specific channel names in receive() must end at the !")
         return True
 
-    def require_valid_group_name(self, name):
+    def require_valid_group_name(self, name: str):
         if not self.match_type_and_length(name):
             raise TypeError(self.invalid_name_error.format("Group"))
         if not bool(self.group_name_regex.match(name)):
             raise TypeError(self.invalid_name_error.format("Group"))
         return True
 
-    def valid_channel_names(self, names: list[str], receive=False):
+    def valid_channel_names(self, names: list[str], receive: bool = False):
         _non_empty_list = bool(names)
         _names_type = isinstance(names, list)
         assert _non_empty_list and _names_type, "names must be a non-empty list"
@@ -193,7 +193,7 @@ class BaseChannelLayer:
         else:
             return name
 
-    async def send(self, channel: str, message: str):
+    async def send(self, channel: str, message: dict[str, Any]):
         raise NotImplementedError("send() should be implemented in a channel layer")
 
     async def receive(self, channel: str):
@@ -261,8 +261,8 @@ class InMemoryChannelLayer(BaseChannelLayer):
             channel_capacity=channel_capacity,
             **kwargs,
         )
-        self.channels = {}
-        self.groups = {}
+        self.channels: dict[str, asyncio.Queue[Any]] = {}
+        self.groups: dict[str, dict[str, float]] = {}
         self.group_expiry = group_expiry
 
     # Channel layer API
@@ -368,7 +368,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
 
     # Groups extension
 
-    async def group_add(self, group: str, channel: str):
+    async def group_add(self, group, channel):
         """
         Adds the channel name to a group.
         """
@@ -379,7 +379,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
         self.groups.setdefault(group, {})
         self.groups[group][channel] = time.time()
 
-    async def group_discard(self, group: str, channel: str):
+    async def group_discard(self, group, channel):
         # Both should be text and valid
         self.require_valid_channel_name(channel)
         self.require_valid_group_name(group)
