@@ -1,4 +1,5 @@
 import functools
+from typing import Any
 
 from asgiref.sync import async_to_sync
 
@@ -9,7 +10,7 @@ from .layers import get_channel_layer
 from .utils import await_many_dispatch
 
 
-def get_handler_name(message):
+def get_handler_name(message: dict[str, Any]):
     """
     Looks at a message, checks it has a sensible type, and returns the
     handler name for that type.
@@ -31,10 +32,10 @@ class AsyncConsumer:
     on their type.
     """
 
-    _sync = False
-    channel_layer_alias = DEFAULT_CHANNEL_LAYER
+    _sync: bool = False
+    channel_layer_alias: str = DEFAULT_CHANNEL_LAYER
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: dict[str, Any], receive, send):
         """
         Dispatches incoming messages to type-based handlers asynchronously.
         """
@@ -73,7 +74,7 @@ class AsyncConsumer:
             await aclose_old_connections()
             await handler(message)
         else:
-            raise ValueError("No handler for message type %s" % message["type"])
+            raise ValueError(f"No handler for message type {message['type']}")
 
     async def send(self, message):
         """
@@ -113,7 +114,7 @@ class SyncConsumer(AsyncConsumer):
     for user-called methods very confusing as there'd be two types of each.
     """
 
-    _sync = True
+    _sync: bool = True
 
     @database_sync_to_async
     def dispatch(self, message):
@@ -125,7 +126,7 @@ class SyncConsumer(AsyncConsumer):
         if handler:
             handler(message)
         else:
-            raise ValueError("No handler for message type %s" % message["type"])
+            raise ValueError(f"No handler for message type {message['type']}")
 
     def send(self, message):
         """

@@ -18,17 +18,17 @@ def get_default_application():
     """
     try:
         path, name = settings.ASGI_APPLICATION.rsplit(".", 1)
-    except (ValueError, AttributeError):
+    except ValueError, AttributeError:
         raise ImproperlyConfigured("Cannot find ASGI_APPLICATION setting.")
     try:
         module = importlib.import_module(path)
     except ImportError:
-        raise ImproperlyConfigured("Cannot import ASGI_APPLICATION module %r" % path)
+        raise ImproperlyConfigured(f"Cannot import ASGI_APPLICATION module {path!r}")
     try:
         value = getattr(module, name)
     except AttributeError:
         raise ImproperlyConfigured(
-            "Cannot find %r in ASGI_APPLICATION module %s" % (name, path)
+            f"Cannot find {name!r} in ASGI_APPLICATION module {path}"
         )
     return value
 
@@ -129,11 +129,10 @@ class URLRouter:
                     )
             except Resolver404:
                 pass
-        else:
-            if "path_remaining" in scope:
-                raise Resolver404("No route found for path %r." % path)
-            # We are the outermost URLRouter
-            raise ValueError("No route found for path %r." % path)
+        if "path_remaining" in scope:
+            raise Resolver404(f"No route found for path {path!r}.")
+        # We are the outermost URLRouter
+        raise ValueError(f"No route found for path {path!r}.")
 
 
 class ChannelNameRouter:
@@ -156,5 +155,7 @@ class ChannelNameRouter:
             return await application(scope, receive, send)
         else:
             raise ValueError(
-                "No application configured for channel name %r" % scope["channel"]
+                "No application configured for channel name {!r}".format(
+                    scope["channel"]
+                )
             )

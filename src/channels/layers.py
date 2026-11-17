@@ -6,12 +6,15 @@ import string
 import time
 import warnings
 from copy import deepcopy
+from typing import Any
 
+import pydantic
 from django.conf import settings
 from django.core.signals import setting_changed
 from django.utils.module_loading import import_string
 
 from channels import DEFAULT_CHANNEL_LAYER
+from channels.types import TypeChannelLayer
 
 from .exceptions import ChannelFull, InvalidChannelLayerError
 
@@ -51,28 +54,28 @@ class ChannelLayerManager:
         try:
             config = self.configs[name]["TEST_CONFIG"]
         except KeyError:
-            raise InvalidChannelLayerError("No TEST_CONFIG specified for %s" % name)
+            raise InvalidChannelLayerError(f"No TEST_CONFIG specified for {name}")
         return self._make_backend(name, config)
 
     def _make_backend(self, name, config):
         # Check for old format config
         if "ROUTING" in self.configs[name]:
             raise InvalidChannelLayerError(
-                "ROUTING key found for %s - this is no longer needed in Channels 2."
-                % name
+                f"ROUTING key found for {name} - this is no longer needed in Channels 2."
             )
         # Load the backend class
         try:
             backend_module = self.configs[name]["BACKEND"]
         except KeyError:
-            raise InvalidChannelLayerError("No BACKEND specified for %s" % name)
+            raise InvalidChannelLayerError(f"No BACKEND specified for {name}")
         else:
             try:
                 backend_class = import_string(backend_module)
             except ImportError:
                 raise InvalidChannelLayerError(
-                    "Cannot import BACKEND %r specified for %s"
-                    % (self.configs[name]["BACKEND"], name)
+                    "Cannot import BACKEND {!r} specified for {}".format(
+                        self.configs[name]["BACKEND"], name
+                    )
                 )
 
         # Initialise and pass config
@@ -103,14 +106,19 @@ class BaseChannelLayer:
     common functionality.
     """
 
-    MAX_NAME_LENGTH = 100
+    MAX_NAME_LENGTH: int = 100
 
-    def __init__(self, expiry=60, capacity=100, channel_capacity=None):
+    def __init__(
+        self,
+        expiry: int = 60,
+        capacity: int = 100,
+        channel_capacity: dict | None = None,
+    ):
         self.expiry = expiry
         self.capacity = capacity
         self.channel_capacity = channel_capacity or {}
 
-    def compile_capacities(self, channel_capacity):
+    def compile_capacities(self, channel_capacity: dict):
         """
         Takes an input channel_capacity dict and returns the compiled list
         of regexes that get_capacity will look for as self.channel_capacity
@@ -138,9 +146,7 @@ class BaseChannelLayer:
         return self.capacity
 
     def match_type_and_length(self, name):
-        if isinstance(name, str) and (len(name) < self.MAX_NAME_LENGTH):
-            return True
-        return False
+        return bool(isinstance(name, str) and len(name) < self.MAX_NAME_LENGTH)
 
     # Name validation functions
 
@@ -148,11 +154,11 @@ class BaseChannelLayer:
     group_name_regex = re.compile(r"^[a-zA-Z\d\-_.]+$")
     invalid_name_error = (
         "{} name must be a valid unicode string "
-        + "with length < {} ".format(MAX_NAME_LENGTH)
+        + f"with length < {MAX_NAME_LENGTH} "
         + "containing only ASCII alphanumerics, hyphens, underscores, or periods."
     )
 
-    def require_valid_channel_name(self, name, receive=False):
+    def require_valid_channel_name(self, name, receive: bool = False):
         if not self.match_type_and_length(name):
             raise TypeError(self.invalid_name_error.format("Channel"))
         if not bool(self.channel_name_regex.match(name)):
@@ -168,15 +174,15 @@ class BaseChannelLayer:
             raise TypeError(self.invalid_name_error.format("Group"))
         return True
 
-    def valid_channel_names(self, names, receive=False):
-        _non_empty_list = True if names else False
+    def valid_channel_names(self, names: list[str], receive=False):
+        _non_empty_list = bool(names)
         _names_type = isinstance(names, list)
         assert _non_empty_list and _names_type, "names must be a non-empty list"
         for channel in names:
             self.require_valid_channel_name(channel, receive=receive)
         return True
 
-    def non_local_name(self, name):
+    def non_local_name(self, name: str):
         """
         Given a channel name, returns the "non-local" part. If the channel name
         is a process-specific channel (contains !) this means the part up to
@@ -187,10 +193,10 @@ class BaseChannelLayer:
         else:
             return name
 
-    async def send(self, channel, message):
+    async def send(self, channel: str, message: str):
         raise NotImplementedError("send() should be implemented in a channel layer")
 
-    async def receive(self, channel):
+    async def receive(self, channel: str):
         raise NotImplementedError("receive() should be implemented in a channel layer")
 
     async def new_channel(self):
@@ -201,17 +207,19 @@ class BaseChannelLayer:
     async def flush(self):
         raise NotImplementedError("flush() not implemented (flush extension)")
 
-    async def group_add(self, group, channel):
+    async def group_add(self, group: str, channel: str):
         raise NotImplementedError("group_add() not implemented (groups extension)")
 
-    async def group_discard(self, group, channel):
+    async def group_discard(self, group: str, channel: str):
         raise NotImplementedError("group_discard() not implemented (groups extension)")
 
-    async def group_send(self, group, message):
+    async def group_send(
+        self, group: str, message: str | dict[str, Any] | pydantic.BaseModel
+    ):
         raise NotImplementedError("group_send() not implemented (groups extension)")
 
     # Deprecated methods.
-    def valid_channel_name(self, channel_name, receive=False):
+    def valid_channel_name(self, channel_name: str, receive: bool = False):
         """
         Deprecated: Use require_valid_channel_name instead.
         """
@@ -241,10 +249,10 @@ class InMemoryChannelLayer(BaseChannelLayer):
 
     def __init__(
         self,
-        expiry=60,
-        group_expiry=86400,
-        capacity=100,
-        channel_capacity=None,
+        expiry: int = 60,
+        group_expiry: int = 86400,
+        capacity: int = 100,
+        channel_capacity: dict | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -259,7 +267,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
 
     # Channel layer API
 
-    extensions = ["groups", "flush"]
+    extensions = ("groups", "flush")
 
     async def send(self, channel, message):
         """
@@ -308,7 +316,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
         Returns a new channel name that can be used by something in our
         process as a specific channel.
         """
-        return "%s.inmemory!%s" % (
+        return "{}.inmemory!{}".format(
             prefix,
             "".join(random.choice(string.ascii_letters) for i in range(12)),
         )
@@ -360,7 +368,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
 
     # Groups extension
 
-    async def group_add(self, group, channel):
+    async def group_add(self, group: str, channel: str):
         """
         Adds the channel name to a group.
         """
@@ -371,7 +379,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
         self.groups.setdefault(group, {})
         self.groups[group][channel] = time.time()
 
-    async def group_discard(self, group, channel):
+    async def group_discard(self, group: str, channel: str):
         # Both should be text and valid
         self.require_valid_channel_name(channel)
         self.require_valid_group_name(group)
@@ -384,7 +392,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
             if not group_channels:
                 self.groups.pop(group, None)
 
-    async def group_send(self, group, message):
+    async def group_send(self, group: str, message: str):
         # Check types
         assert isinstance(message, dict), "Message is not a dict"
         self.require_valid_group_name(group)
@@ -394,7 +402,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
         # Send to each channel
         ops = []
         if group in self.groups:
-            for channel in self.groups[group].keys():
+            for channel in self.groups[group]:
                 ops.append(asyncio.create_task(self.send(channel, message)))
         for send_result in asyncio.as_completed(ops):
             try:
@@ -403,7 +411,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
                 pass
 
 
-def get_channel_layer(alias=DEFAULT_CHANNEL_LAYER):
+def get_channel_layer(alias: str = DEFAULT_CHANNEL_LAYER) -> TypeChannelLayer | None:
     """
     Returns a channel layer by alias, or None if it is not configured.
     """

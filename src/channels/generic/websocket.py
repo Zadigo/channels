@@ -1,5 +1,7 @@
 import json
+from typing import Any
 
+import pydantic
 from asgiref.sync import async_to_sync
 
 from ..consumer import AsyncConsumer, SyncConsumer
@@ -18,7 +20,7 @@ class WebsocketConsumer(SyncConsumer):
     WebSocket handling model that other applications can build on.
     """
 
-    groups = None
+    groups: list | None = None
 
     def __init__(self, *args, **kwargs):
         if self.groups is None:
@@ -69,7 +71,6 @@ class WebsocketConsumer(SyncConsumer):
         """
         Called with a decoded WebSocket frame.
         """
-        pass
 
     def send(self, text_data=None, bytes_data=None, close=False):
         """
@@ -116,7 +117,6 @@ class WebsocketConsumer(SyncConsumer):
         """
         Called when a WebSocket connection is closed.
         """
-        pass
 
 
 class JsonWebsocketConsumer(WebsocketConsumer):
@@ -136,7 +136,6 @@ class JsonWebsocketConsumer(WebsocketConsumer):
         """
         Called with decoded JSON content.
         """
-        pass
 
     def send_json(self, content, close=False):
         """
@@ -159,7 +158,7 @@ class AsyncWebsocketConsumer(AsyncConsumer):
     for the WebSocket handling model that other applications can build on.
     """
 
-    groups = None
+    groups: list | None = None
 
     def __init__(self, *args, **kwargs):
         if self.groups is None:
@@ -209,7 +208,6 @@ class AsyncWebsocketConsumer(AsyncConsumer):
         """
         Called with a decoded WebSocket frame.
         """
-        pass
 
     async def send(self, text_data=None, bytes_data=None, close=False):
         """
@@ -255,7 +253,6 @@ class AsyncWebsocketConsumer(AsyncConsumer):
         """
         Called when a WebSocket connection is closed.
         """
-        pass
 
 
 class AsyncJsonWebsocketConsumer(AsyncWebsocketConsumer):
@@ -275,9 +272,10 @@ class AsyncJsonWebsocketConsumer(AsyncWebsocketConsumer):
         """
         Called with decoded JSON content.
         """
-        pass
 
-    async def send_json(self, content, close=False):
+    async def send_json(
+        self, content: dict[str, Any] | pydantic.BaseModel, close=False
+    ):
         """
         Encode the given content as JSON and send it to the client.
         """

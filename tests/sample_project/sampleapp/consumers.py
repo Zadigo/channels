@@ -6,12 +6,14 @@ from .models import Message
 
 class LiveMessageConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
-        await self.channel_layer.group_add("live_message", self.channel_name)
+        if self.channel_layer is not None:
+            await self.channel_layer.group_add("live_message", self.channel_name)
         await self.accept()
         await self.send_current_state()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard("live_message", self.channel_name)
+        if self.channel_layer is not None:
+            await self.channel_layer.group_discard("live_message", self.channel_name)
 
     @database_sync_to_async
     def _fetch_state(self):
@@ -46,9 +48,10 @@ class LiveMessageConsumer(AsyncJsonWebsocketConsumer):
 
     async def send_current_state(self):
         state = await self._fetch_state()
-        await self.channel_layer.group_send(
-            "live_message", {"type": "broadcast_message", **state}
-        )
+        if self.channel_layer is not None:
+            await self.channel_layer.group_send(
+                "live_message", {"type": "broadcast_message", **state}
+            )
 
     async def broadcast_message(self, event):
         await self.send_json(

@@ -15,7 +15,10 @@ maintainers = [
   {name = "John Pendenque", email = "pendenquejohn@gmail.com"}
 ]
 
-dependencies = []
+dependencies = [
+    "async-timeout>=5.0.1",
+    "pydantic>=2.14.3",
+]
 
 [dependency-groups]
 dev = [
@@ -51,3 +54,8 @@ source-exclude = [
     "**/.DS_Store",
     "conftest.py"
 ]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportUntypedBaseClass = true
