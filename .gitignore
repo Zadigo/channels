@@ -24,3 +24,5 @@ Pipfile.lock
 
 # macOS
 .DS_Store
+
+.venv
