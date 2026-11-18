@@ -13,10 +13,15 @@ class WebsocketCommunicator(ApplicationCommunicator):
     """
 
     def __init__(
-        self, application, path, headers=None, subprotocols=None, spec_version=None
+        self,
+        application,
+        path: str,
+        headers=None,
+        subprotocols: list[str] | None = None,
+        spec_version=None,
     ):
         if not isinstance(path, str):
-            raise TypeError("Expected str, got {}".format(type(path)))
+            raise TypeError(f"Expected str, got {type(path)}")
         parsed = urlparse(path)
         self.scope = {
             "type": "websocket",
@@ -28,7 +33,7 @@ class WebsocketCommunicator(ApplicationCommunicator):
         if spec_version:
             self.scope["spec_version"] = spec_version
         super().__init__(application, self.scope)
-        self.response_headers = None
+        self.response_headers: list | None = None
 
     async def connect(self, timeout=1):
         """
@@ -51,17 +56,17 @@ class WebsocketCommunicator(ApplicationCommunicator):
         Sends a WebSocket frame to the application.
         """
         # Make sure we have exactly one of the arguments
-        assert bool(text_data) != bool(
-            bytes_data
-        ), "You must supply exactly one of text_data or bytes_data"
+        assert bool(text_data) != bool(bytes_data), (
+            "You must supply exactly one of text_data or bytes_data"
+        )
         # Send the right kind of event
         if text_data:
             assert isinstance(text_data, str), "The text_data argument must be a str"
             await self.send_input({"type": "websocket.receive", "text": text_data})
         else:
-            assert isinstance(
-                bytes_data, bytes
-            ), "The bytes_data argument must be bytes"
+            assert isinstance(bytes_data, bytes), (
+                "The bytes_data argument must be bytes"
+            )
             await self.send_input({"type": "websocket.receive", "bytes": bytes_data})
 
     async def send_json_to(self, data):
@@ -78,23 +83,23 @@ class WebsocketCommunicator(ApplicationCommunicator):
         """
         response = await self.receive_output(timeout)
         # Make sure this is a send message
-        assert (
-            response["type"] == "websocket.send"
-        ), f"Expected type 'websocket.send', but was '{response['type']}'"
+        assert response["type"] == "websocket.send", (
+            f"Expected type 'websocket.send', but was '{response['type']}'"
+        )
         # Make sure there's exactly one key in the response
-        assert ("text" in response) != (
-            "bytes" in response
-        ), "The response needs exactly one of 'text' or 'bytes'"
+        assert ("text" in response) != ("bytes" in response), (
+            "The response needs exactly one of 'text' or 'bytes'"
+        )
         # Pull out the right key and typecheck it for our users
         if "text" in response:
-            assert isinstance(
-                response["text"], str
-            ), f"Text frame payload is not str, it is {type(response['text'])}"
+            assert isinstance(response["text"], str), (
+                f"Text frame payload is not str, it is {type(response['text'])}"
+            )
             return response["text"]
         else:
-            assert isinstance(
-                response["bytes"], bytes
-            ), f"Binary frame payload is not bytes, it is {type(response['bytes'])}"
+            assert isinstance(response["bytes"], bytes), (
+                f"Binary frame payload is not bytes, it is {type(response['bytes'])}"
+            )
             return response["bytes"]
 
     async def receive_json_from(self, timeout=1):
@@ -102,9 +107,9 @@ class WebsocketCommunicator(ApplicationCommunicator):
         Receives a JSON text frame payload and decodes it
         """
         payload = await self.receive_from(timeout)
-        assert isinstance(
-            payload, str
-        ), f"JSON data is not a text frame, it is {type(payload)}"
+        assert isinstance(payload, str), (
+            f"JSON data is not a text frame, it is {type(payload)}"
+        )
         return json.loads(payload)
 
     async def disconnect(self, code=1000, timeout=1):

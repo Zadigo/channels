@@ -48,7 +48,7 @@ class ProtocolTypeRouter:
             return await application(scope, receive, send)
         else:
             raise ValueError(
-                "No application configured for scope type %r" % scope["type"]
+                "No application configured for scope type {!r}".format(scope["type"])
             )
 
 
@@ -66,7 +66,7 @@ class URLRouter:
     #: treated as endpoints (ended with ``$``), but similar to ``include()``.
     _path_routing = True
 
-    def __init__(self, routes):
+    def __init__(self, routes: list[URLResolver]):
         self.routes = routes
 
         for route in self.routes:
@@ -84,8 +84,8 @@ class URLRouter:
 
             if not route.callback and isinstance(route, URLResolver):
                 raise ImproperlyConfigured(
-                    "%s: include() is not supported in URLRouter. Use nested"
-                    " URLRouter instances instead." % (route,)
+                    f"{route}: include() is not supported in URLRouter. Use nested"
+                    " URLRouter instances instead."
                 )
 
     async def __call__(self, scope, receive, send):
@@ -99,7 +99,7 @@ class URLRouter:
             root_path = scope.get("root_path", "")
             if root_path and not path.startswith(root_path):
                 # If root_path is present, path must start with it.
-                raise ValueError("No route found for path %r." % path)
+                raise ValueError(f"No route found for path {path!r}.")
             path = path[len(root_path) :]
 
         # Remove leading / to match Django's handling

@@ -1,7 +1,10 @@
 import functools
+from collections.abc import Callable
 from typing import Any
 
 from asgiref.sync import async_to_sync
+
+from channels.types import TypeAsyncFunction, TypeHandlerFunction
 
 from . import DEFAULT_CHANNEL_LAYER
 from .db import aclose_old_connections, database_sync_to_async
@@ -10,7 +13,7 @@ from .layers import get_channel_layer
 from .utils import await_many_dispatch
 
 
-def get_handler_name(message: dict[str, Any]):
+def get_handler_name(message: dict[str, Any]) -> str:
     """
     Looks at a message, checks it has a sensible type, and returns the
     handler name for that type.
@@ -25,7 +28,7 @@ def get_handler_name(message: dict[str, Any]):
     return handler_name
 
 
-class AsyncConsumer:
+class AsyncConsumer[T = dict[str, Any]]:
     """
     Base consumer class. Implements the ASGI application spec, and adds on
     channel layer management and routing of events to named methods based
@@ -35,7 +38,7 @@ class AsyncConsumer:
     _sync: bool = False
     channel_layer_alias: str = DEFAULT_CHANNEL_LAYER
 
-    async def __call__(self, scope: dict[str, Any], receive, send):
+    async def __call__(self, scope: dict[str, Any], receive, send: Callable[..., Any]):
         """
         Dispatches incoming messages to type-based handlers asynchronously.
         """
@@ -65,25 +68,27 @@ class AsyncConsumer:
             # Exit cleanly
             pass
 
-    async def dispatch(self, message):
+    async def dispatch(self, message: dict[str, Any]):
         """
         Works out what to do with a message.
         """
-        handler = getattr(self, get_handler_name(message), None)
+        handler: TypeAsyncFunction[dict[str, Any]] | None = getattr(
+            self, get_handler_name(message), None
+        )
         if handler:
             await aclose_old_connections()
             await handler(message)
         else:
             raise ValueError(f"No handler for message type {message['type']}")
 
-    async def send(self, message):
+    async def send(self, message: dict[str, Any]):
         """
         Overrideable/callable-by-subclasses send method.
         """
         await self.base_send(message)
 
     @classmethod
-    def as_asgi(cls, **initkwargs):
+    def as_asgi(cls, **initkwargs: Any):
         """
         Return an ASGI v3 single callable that instantiates a consumer instance
         per scope. Similar in purpose to Django's as_view().
@@ -122,7 +127,9 @@ class SyncConsumer(AsyncConsumer):
         Dispatches incoming messages to type-based handlers asynchronously.
         """
         # Get and execute the handler
-        handler = getattr(self, get_handler_name(message), None)
+        handler: TypeHandlerFunction | None = getattr(
+            self, get_handler_name(message), None
+        )
         if handler:
             handler(message)
         else:

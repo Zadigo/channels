@@ -20,9 +20,9 @@ class WebsocketConsumer(SyncConsumer):
     WebSocket handling model that other applications can build on.
     """
 
-    groups: list | None = None
+    groups: list[str] | None = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         if self.groups is None:
             self.groups = []
 
@@ -47,17 +47,20 @@ class WebsocketConsumer(SyncConsumer):
     def connect(self):
         self.accept()
 
-    def accept(self, subprotocol=None, headers=None):
+    def accept(self, subprotocol: str | None = None, headers=None):
         """
         Accepts an incoming socket
         """
-        message = {"type": "websocket.accept", "subprotocol": subprotocol}
+        message: dict[str, Any] = {
+            "type": "websocket.accept",
+            "subprotocol": subprotocol,
+        }
         if headers:
             message["headers"] = list(headers)
 
         super().send(message)
 
-    def websocket_receive(self, message):
+    def websocket_receive(self, message: dict[str, Any]):
         """
         Called when a WebSocket frame is received. Decodes it and passes it
         to receive().
@@ -67,7 +70,7 @@ class WebsocketConsumer(SyncConsumer):
         else:
             self.receive(bytes_data=message["bytes"])
 
-    def receive(self, text_data=None, bytes_data=None):
+    def receive(self, text_data: str | None = None, bytes_data: bytes | None = None):
         """
         Called with a decoded WebSocket frame.
         """
@@ -113,7 +116,7 @@ class WebsocketConsumer(SyncConsumer):
         self.disconnect(message["code"])
         raise StopConsumer()
 
-    def disconnect(self, code):
+    def disconnect(self, code: int):
         """
         Called when a WebSocket connection is closed.
         """
@@ -126,25 +129,30 @@ class JsonWebsocketConsumer(WebsocketConsumer):
     error on binary data.
     """
 
-    def receive(self, text_data=None, bytes_data=None, **kwargs):
+    def receive(
+        self,
+        text_data: str | None = None,
+        bytes_data: bytes | bytearray | None = None,
+        **kwargs: Any,
+    ):
         if text_data:
             self.receive_json(self.decode_json(text_data), **kwargs)
         else:
             raise ValueError("No text section for incoming WebSocket frame!")
 
-    def receive_json(self, content, **kwargs):
+    def receive_json(self, content: dict[str, Any], **kwargs: Any):
         """
         Called with decoded JSON content.
         """
 
-    def send_json(self, content, close=False):
+    def send_json(self, content: dict[str, Any], close=False):
         """
         Encode the given content as JSON and send it to the client.
         """
         super().send(text_data=self.encode_json(content), close=close)
 
     @classmethod
-    def decode_json(cls, text_data):
+    def decode_json(cls, text_data: str | bytes | bytearray):
         return json.loads(text_data)
 
     @classmethod
@@ -160,7 +168,7 @@ class AsyncWebsocketConsumer(AsyncConsumer):
 
     groups: list | None = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         if self.groups is None:
             self.groups = []
 
@@ -185,7 +193,7 @@ class AsyncWebsocketConsumer(AsyncConsumer):
     async def connect(self):
         await self.accept()
 
-    async def accept(self, subprotocol=None, headers=None):
+    async def accept(self, subprotocol: str | None = None, headers=None):
         """
         Accepts an incoming socket
         """

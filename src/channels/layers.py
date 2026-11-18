@@ -392,7 +392,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
             if not group_channels:
                 self.groups.pop(group, None)
 
-    async def group_send(self, group: str, message: str):
+    async def group_send(self, group, message):
         # Check types
         assert isinstance(message, dict), "Message is not a dict"
         self.require_valid_group_name(group)
@@ -400,7 +400,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
         self._clean_expired()
 
         # Send to each channel
-        ops = []
+        ops: list[asyncio.Task[Any]] = []
         if group in self.groups:
             for channel in self.groups[group]:
                 ops.append(asyncio.create_task(self.send(channel, message)))
